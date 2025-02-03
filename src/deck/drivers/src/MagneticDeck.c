@@ -42,12 +42,12 @@ static bool isInit = false;
 
 // Anchors
 const float AnchorPositionMatrix[4][3] = {
-    {Nero_Position_x, Nero_Position_y, Nero_Position_z},
-    {Giallo_Position_x, Giallo_Position_y, Giallo_Position_z},
-    {Grigio_Position_x, Grigio_Position_y, Grigio_Position_z},
-    {Rosso_Position_x, Rosso_Position_y, Rosso_Position_z}};
+    {Coil_1_Position_x, Coil_1_Position_y, Coil_1_Position_z},
+    {Coil_2_Position_x, Coil_2_Position_y, Coil_2_Position_z},
+    {Coil_3_Position_x, Coil_3_Position_y, Coil_3_Position_z},
+    {Coil_4_Position_x, Coil_4_Position_y, Coil_4_Position_z}};
 
-const float ResonanceFreqs[4] = {NeroResFreq, GialloResFreq, GrigioResFreq, RossoResFreq};
+const float ResonanceFreqs[4] = {Coil_1ResFreq, Coil_2ResFreq, Coil_3ResFreq, Coil_4ResFreq};
 
 // adc INITIALIZATION
 // ADC flag to check if the conversion is done
@@ -90,20 +90,23 @@ static int counter = 0;
 
 volatile float MeasuredVoltages_calibrated[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-float NeroAmpl = 0;
-float GialloAmpl = 0;
-float GrigioAmpl = 0;
-float RossoAmpl = 0;
+float Coil_1Ampl = 0;
+float Coil_2Ampl = 0;
+float Coil_3Ampl = 0;
+float Coil_4Ampl = 0;
 
 volatile float LKF_ESTIMATION_DEBUG[3] = {0.0f, 0.0f, 0.0f};
+
+volatile float outlier = 0;
+
 
 // FFT
 // static uint16_t bin_size = BIN_SIZE;
 // static uint16_t fft_size = FFT_SIZE;
-// static uint16_t Nero_Idx = NeroIdx;
-// static uint16_t Giallo_Idx = GialloIdx;
-// static uint16_t Grigio_Idx = GrigioIdx;
-// static uint16_t Rosso_Idx = RossoIdx;
+// static uint16_t Coil_1_Idx = Coil_1Idx;
+// static uint16_t Coil_2_Idx = Coil_2Idx;
+// static uint16_t Coil_3_Idx = Coil_3Idx;
+// static uint16_t Coil_4_Idx = Coil_4Idx;
 
 float skipThisMeasurement = 0;
 
@@ -971,25 +974,25 @@ void check_saturations(FFT_Amplitudes *amplitudes, int *Id_in_saturation, bool *
     Id_in_saturation[2] = 0;
     Id_in_saturation[3] = 0;
 
-    if (amplitudes->NeroAmpl >= SATURATION_TRESHOLD)
+    if (amplitudes->Coil_1Ampl >= SATURATION_TRESHOLD)
     {
         Id_in_saturation[0] = 1;
         // DEBUG_PRINT("Saturating\n");
         *there_is_saturation = true;
     }
-    if (amplitudes->GialloAmpl >= SATURATION_TRESHOLD)
+    if (amplitudes->Coil_2Ampl >= SATURATION_TRESHOLD)
     {
         Id_in_saturation[1] = 1;
         // DEBUG_PRINT("Saturating\n");
         *there_is_saturation = true;
     }
-    if (amplitudes->GrigioAmpl >= SATURATION_TRESHOLD)
+    if (amplitudes->Coil_3Ampl >= SATURATION_TRESHOLD)
     {
         Id_in_saturation[2] = 1;
         // DEBUG_PRINT("Saturating\n");
         *there_is_saturation = true;
     }
-    if (amplitudes->RossoAmpl >= SATURATION_TRESHOLD)
+    if (amplitudes->Coil_4Ampl >= SATURATION_TRESHOLD)
     {
         Id_in_saturation[3] = 1;
         // DEBUG_PRINT("Saturating\n");
@@ -1043,65 +1046,68 @@ FFT_Amplitudes performFFT(uint32_t *Input_buffer_pointer, float32_t *Output_buff
     // NOTE:*2 is because the fft of a sin is 2 impulsive delta of A/2 amplitude therefore to get the full amplitude of the signal i need to multiply by 2
     // NOTE: *flattopCorrectionFactor is the correction factor for the flattop window that i applied
 
-    // Extract the maximum value and its index around NeroIdx
+    // Extract the maximum value and its index around Coil_1Idx
     uint32_t maxindex;
-    arm_max_f32(&fft_magnitude[NeroIdx - 2], 4, &amps.NeroAmpl, &maxindex);
+    arm_max_f32(&fft_magnitude[Coil_1Idx - 2], 4, &amps.Coil_1Ampl, &maxindex);
     // get the value before and the value after the maximum value
-    float beforeNero = fft_magnitude[NeroIdx - 2];
-    float afterNero = fft_magnitude[NeroIdx + 1];
+    float beforeCoil_1 = fft_magnitude[Coil_1Idx - 2];
+    float afterCoil_1 = fft_magnitude[Coil_1Idx + 1];
     // define the points
-    Point_magnetic_fft NeroPoint = {NeroIdx, amps.NeroAmpl};
-    Point_magnetic_fft beforeNeroPoint = {NeroIdx - 2, beforeNero};
-    Point_magnetic_fft afterNeroPoint = {NeroIdx + 1, afterNero};
+    Point_magnetic_fft Coil_1Point = {Coil_1Idx, amps.Coil_1Ampl};
+    Point_magnetic_fft beforeCoil_1Point = {Coil_1Idx - 2, beforeCoil_1};
+    Point_magnetic_fft afterCoil_1Point = {Coil_1Idx + 1, afterCoil_1};
     // find the peach of the signal
-    Point_magnetic_fft NeroMaxPoint;
-    reconstructParabolaAndFindPeak(beforeNeroPoint, NeroPoint, afterNeroPoint, &NeroMaxPoint);
-    amps.NeroAmpl = NeroMaxPoint.y * flattopCorrectionFactor * 2.0f;
+    Point_magnetic_fft Coil_1MaxPoint;
+    reconstructParabolaAndFindPeak(beforeCoil_1Point, Coil_1Point, afterCoil_1Point, &Coil_1MaxPoint);
+    amps.Coil_1Ampl = Coil_1MaxPoint.y * flattopCorrectionFactor * 2.0f;
 
-    // Calculate the maximum value and its index around GialloIdx
-    arm_max_f32(&fft_magnitude[GialloIdx - 1], 3, &amps.GialloAmpl, &maxindex);
+    // Calculate the maximum value and its index around Coil_2Idx
+    arm_max_f32(&fft_magnitude[Coil_2Idx - 1], 3, &amps.Coil_2Ampl, &maxindex);
     // get the value before and the value after the maximum value
-    float beforeGiallo = fft_magnitude[GialloIdx - 2];
-    float afterGiallo = fft_magnitude[GialloIdx + 1];
+    float beforeCoil_2 = fft_magnitude[Coil_2Idx - 2];
+    float afterCoil_2 = fft_magnitude[Coil_2Idx + 1];
     // define the points
-    Point_magnetic_fft GialloPoint = {GialloIdx, amps.GialloAmpl};
-    Point_magnetic_fft beforeGialloPoint = {GialloIdx - 2, beforeGiallo};
-    Point_magnetic_fft afterGialloPoint = {GialloIdx + 1, afterGiallo};
+    Point_magnetic_fft Coil_2Point = {Coil_2Idx, amps.Coil_2Ampl};
+    Point_magnetic_fft beforeCoil_2Point = {Coil_2Idx - 2, beforeCoil_2};
+    Point_magnetic_fft afterCoil_2Point = {Coil_2Idx + 1, afterCoil_2};
     // find the peach of the signal
-    Point_magnetic_fft GialloMaxPoint;
-    reconstructParabolaAndFindPeak(beforeGialloPoint, GialloPoint, afterGialloPoint, &GialloMaxPoint);
-    amps.GialloAmpl = GialloMaxPoint.y * flattopCorrectionFactor * 2.0f;
+    Point_magnetic_fft Coil_2MaxPoint;
+    reconstructParabolaAndFindPeak(beforeCoil_2Point, Coil_2Point, afterCoil_2Point, &Coil_2MaxPoint);
+    amps.Coil_2Ampl = Coil_2MaxPoint.y * flattopCorrectionFactor * 2.0f;
 
-    // Calculate the maximum value and its index around GrigioIdx
-    arm_max_f32(&fft_magnitude[GrigioIdx - 1], 3, &amps.GrigioAmpl, &maxindex);
-    float beforeGrigio = fft_magnitude[GrigioIdx - 2];
-    float afterGrigio = fft_magnitude[GrigioIdx + 1];
+    // Calculate the maximum value and its index around Coil_3Idx
+    arm_max_f32(&fft_magnitude[Coil_3Idx - 1], 3, &amps.Coil_3Ampl, &maxindex);
+    // DEBUG_PRINT("MaxIndex: %d\n",maxindex);
+    // DEBUG_PRINT("amps.Coil_3Ampl: %f\n",amps.Coil_3Ampl);
+    float beforeCoil_3 = fft_magnitude[Coil_3Idx - 2];
+    float afterCoil_3 = fft_magnitude[Coil_3Idx + 1];
     // define the points
-    Point_magnetic_fft GrigioPoint = {GrigioIdx, amps.GrigioAmpl};
-    Point_magnetic_fft beforeGrigioPoint = {GrigioIdx - 2, beforeGrigio};
-    Point_magnetic_fft afterGrigioPoint = {GrigioIdx + 1, afterGrigio};
+    Point_magnetic_fft Coil_3Point = {Coil_3Idx, amps.Coil_3Ampl};
+    Point_magnetic_fft beforeCoil_3Point = {Coil_3Idx - 2, beforeCoil_3};
+    Point_magnetic_fft afterCoil_3Point = {Coil_3Idx + 1, afterCoil_3};
     // find the peach of the signal
-    Point_magnetic_fft GrigioMaxPoint;
-    reconstructParabolaAndFindPeak(beforeGrigioPoint, GrigioPoint, afterGrigioPoint, &GrigioMaxPoint);
-    amps.GrigioAmpl = GrigioMaxPoint.y * flattopCorrectionFactor * 2.0f;
+    Point_magnetic_fft Coil_3MaxPoint;
+    reconstructParabolaAndFindPeak(beforeCoil_3Point, Coil_3Point, afterCoil_3Point, &Coil_3MaxPoint);
+    // DEBUG_PRINT("Coil_3MaxPoint.y: %f\n",Coil_3MaxPoint.y);
+    amps.Coil_3Ampl = Coil_3MaxPoint.y * flattopCorrectionFactor * 2.0f;
 
-    // Calculate the maximum value and its index around RossoIdx
-    arm_max_f32(&fft_magnitude[RossoIdx - 1], 3, &amps.RossoAmpl, &maxindex);
-    float beforeRosso = fft_magnitude[RossoIdx - 2];
-    float afterRosso = fft_magnitude[RossoIdx + 1];
+    // Calculate the maximum value and its index around Coil_4Idx
+    arm_max_f32(&fft_magnitude[Coil_4Idx - 1], 3, &amps.Coil_4Ampl, &maxindex);
+    float beforeCoil_4 = fft_magnitude[Coil_4Idx - 2];
+    float afterCoil_4 = fft_magnitude[Coil_4Idx + 1];
     // define the points
-    Point_magnetic_fft RossoPoint = {RossoIdx, amps.RossoAmpl};
-    Point_magnetic_fft beforeRossoPoint = {RossoIdx - 2, beforeRosso};
-    Point_magnetic_fft afterRossoPoint = {RossoIdx + 1, afterRosso};
+    Point_magnetic_fft Coil_4Point = {Coil_4Idx, amps.Coil_4Ampl};
+    Point_magnetic_fft beforeCoil_4Point = {Coil_4Idx - 2, beforeCoil_4};
+    Point_magnetic_fft afterCoil_4Point = {Coil_4Idx + 1, afterCoil_4};
     // find the peach of the signal
-    Point_magnetic_fft RossoMaxPoint;
-    reconstructParabolaAndFindPeak(beforeRossoPoint, RossoPoint, afterRossoPoint, &RossoMaxPoint);
-    amps.RossoAmpl = RossoMaxPoint.y * flattopCorrectionFactor * 2.0f;
+    Point_magnetic_fft Coil_4MaxPoint;
+    reconstructParabolaAndFindPeak(beforeCoil_4Point, Coil_4Point, afterCoil_4Point, &Coil_4MaxPoint);
+    amps.Coil_4Ampl = Coil_4MaxPoint.y * flattopCorrectionFactor * 2.0f;
 
-    amps.AllAmpl[0] = amps.NeroAmpl;
-    amps.AllAmpl[1] = amps.GialloAmpl;
-    amps.AllAmpl[2] = amps.GrigioAmpl;
-    amps.AllAmpl[3] = amps.RossoAmpl;
+    amps.AllAmpl[0] = amps.Coil_1Ampl;
+    amps.AllAmpl[1] = amps.Coil_2Ampl;
+    amps.AllAmpl[2] = amps.Coil_3Ampl;
+    amps.AllAmpl[3] = amps.Coil_4Ampl;
 
     // return the amplitudes
     return amps;
@@ -1112,51 +1118,51 @@ FFT_Amplitudes performFFT(uint32_t *Input_buffer_pointer, float32_t *Output_buff
     // THIS MODEL IS NOT USED TO UPDATE THE KALMAN FILTER, JUST AS CONFIRMATION
 
     // compute the the distances from the amplitude of each anchor
-    Nero_distance = powf(10, (log10(NeroAmpl) - Nero_Q) / Nero_M);
-    Giallo_distance = powf(10, (log10(GialloAmpl) - Giallo_Q) / Giallo_M);
-    Grigio_distance = powf(10, (log10(GrigioAmpl) - Grigio_Q) / Grigio_M);
-    Rosso_distance = powf(10, (log10(RossoAmpl) - Rosso_Q) / Rosso_M);
+    Coil_1_distance = powf(10, (log10(Coil_1Ampl) - Coil_1_Q) / Coil_1_M);
+    Coil_2_distance = powf(10, (log10(Coil_2Ampl) - Coil_2_Q) / Coil_2_M);
+    Coil_3_distance = powf(10, (log10(Coil_3Ampl) - Coil_3_Q) / Coil_3_M);
+    Coil_4_distance = powf(10, (log10(Coil_4Ampl) - Coil_4_Q) / Coil_4_M);
 
-    // Nero
-    distanceMeasurement_t dist_Nero;
-    dist_Nero.distance = Nero_distance;
-    dist_Nero.x = Nero_Position[0];
-    dist_Nero.y = Nero_Position[1];
-    dist_Nero.z = Nero_Position[2];
-    dist_Nero.anchorId = Nero_Id;
-    dist_Nero.stdDev = MagneticStandardDeviation;
-    // DEBUG_PRINT("Nero Distance: %f\n", Nero_distance);
-    // estimatorEnqueueDistance(&dist_Nero);
+    // Coil_1
+    distanceMeasurement_t dist_Coil_1;
+    dist_Coil_1.distance = Coil_1_distance;
+    dist_Coil_1.x = Coil_1_Position[0];
+    dist_Coil_1.y = Coil_1_Position[1];
+    dist_Coil_1.z = Coil_1_Position[2];
+    dist_Coil_1.anchorId = Coil_1_Id;
+    dist_Coil_1.stdDev = MagneticStandardDeviation;
+    // DEBUG_PRINT("Coil_1 Distance: %f\n", Coil_1_distance);
+    // estimatorEnqueueDistance(&dist_Coil_1);
 
-    // // Giallo
-    distanceMeasurement_t dist_Giallo;
-    dist_Giallo.distance = Giallo_distance;
-    dist_Giallo.x = Giallo_Position[0];
-    dist_Giallo.y = Giallo_Position[1];
-    dist_Giallo.z = Giallo_Position[2];
-    dist_Giallo.anchorId = Giallo_Id;
-    dist_Giallo.stdDev = MagneticStandardDeviation;
-    // estimatorEnqueueDistance(&dist_Giallo);
+    // // Coil_2
+    distanceMeasurement_t dist_Coil_2;
+    dist_Coil_2.distance = Coil_2_distance;
+    dist_Coil_2.x = Coil_2_Position[0];
+    dist_Coil_2.y = Coil_2_Position[1];
+    dist_Coil_2.z = Coil_2_Position[2];
+    dist_Coil_2.anchorId = Coil_2_Id;
+    dist_Coil_2.stdDev = MagneticStandardDeviation;
+    // estimatorEnqueueDistance(&dist_Coil_2);
 
-    // // Grigio
-    distanceMeasurement_t dist_Grigio;
-    dist_Grigio.distance = Grigio_distance;
-    dist_Grigio.x = Grigio_Position[0];
-    dist_Grigio.y = Grigio_Position[1];
-    dist_Grigio.z = Grigio_Position[2];
-    dist_Grigio.anchorId = Grigio_Id;
-    dist_Grigio.stdDev = MagneticStandardDeviation;
-    // estimatorEnqueueDistance(&dist_Grigio);
+    // // Coil_3
+    distanceMeasurement_t dist_Coil_3;
+    dist_Coil_3.distance = Coil_3_distance;
+    dist_Coil_3.x = Coil_3_Position[0];
+    dist_Coil_3.y = Coil_3_Position[1];
+    dist_Coil_3.z = Coil_3_Position[2];
+    dist_Coil_3.anchorId = Coil_3_Id;
+    dist_Coil_3.stdDev = MagneticStandardDeviation;
+    // estimatorEnqueueDistance(&dist_Coil_3);
 
-    // // Rosso
-    distanceMeasurement_t dist_Rosso;
-    dist_Rosso.distance = Rosso_distance;
-    dist_Rosso.x = Rosso_Position[0];
-    dist_Rosso.y = Rosso_Position[1];
-    dist_Rosso.z = Rosso_Position[2];
-    dist_Rosso.anchorId = Rosso_Id;
-    dist_Rosso.stdDev = MagneticStandardDeviation;
-    estimatorEnqueueDistance(&dist_Rosso);
+    // // Coil_4
+    distanceMeasurement_t dist_Coil_4;
+    dist_Coil_4.distance = Coil_4_distance;
+    dist_Coil_4.x = Coil_4_Position[0];
+    dist_Coil_4.y = Coil_4_Position[1];
+    dist_Coil_4.z = Coil_4_Position[2];
+    dist_Coil_4.anchorId = Coil_4_Id;
+    dist_Coil_4.stdDev = MagneticStandardDeviation;
+    estimatorEnqueueDistance(&dist_Coil_4);
     */
 
     // ---------------3D MEASUREMENT MODEL - POSITION COMPUTATION------------------------------
@@ -1164,40 +1170,40 @@ FFT_Amplitudes performFFT(uint32_t *Input_buffer_pointer, float32_t *Output_buff
 
     // voltMeasurement_t volt;
 
-    // volt.x[0] = Nero_Position_x;
-    // volt.y[0] = Nero_Position_y;
-    // volt.z[0] = Nero_Position_z;
+    // volt.x[0] = Coil_1_Position_x;
+    // volt.y[0] = Coil_1_Position_y;
+    // volt.z[0] = Coil_1_Position_z;
     // volt.stdDev[0] = MagneticStandardDeviation;
-    // volt.measuredVolt[0] = NeroAmpl;
-    // volt.anchorId[0] = Nero_Id;
-    // volt.resonanceFrequency[0] = NeroResFreq;
+    // volt.measuredVolt[0] = Coil_1Ampl;
+    // volt.anchorId[0] = Coil_1_Id;
+    // volt.resonanceFrequency[0] = Coil_1ResFreq;
     // volt.GainValue = TotalGain;
 
-    // volt.x[1] = Giallo_Position_x;
-    // volt.y[1] = Giallo_Position_y;
-    // volt.z[1] = Giallo_Position_z;
+    // volt.x[1] = Coil_2_Position_x;
+    // volt.y[1] = Coil_2_Position_y;
+    // volt.z[1] = Coil_2_Position_z;
     // volt.stdDev[1] = MagneticStandardDeviation;
-    // volt.measuredVolt[1] = GialloAmpl;
-    // volt.anchorId[1] = Giallo_Id;
-    // volt.resonanceFrequency[1] = GialloResFreq;
+    // volt.measuredVolt[1] = Coil_2Ampl;
+    // volt.anchorId[1] = Coil_2_Id;
+    // volt.resonanceFrequency[1] = Coil_2ResFreq;
     // volt.GainValue = TotalGain;
 
-    // volt.x[2] = Grigio_Position_x;
-    // volt.y[2] = Grigio_Position_y;
-    // volt.z[2] = Grigio_Position_z;
+    // volt.x[2] = Coil_3_Position_x;
+    // volt.y[2] = Coil_3_Position_y;
+    // volt.z[2] = Coil_3_Position_z;
     // volt.stdDev[2] = MagneticStandardDeviation;
-    // volt.measuredVolt[2] = GrigioAmpl;
-    // volt.anchorId[2] = Grigio_Id;
-    // volt.resonanceFrequency[2] = GrigioResFreq;
+    // volt.measuredVolt[2] = Coil_3Ampl;
+    // volt.anchorId[2] = Coil_3_Id;
+    // volt.resonanceFrequency[2] = Coil_3ResFreq;
     // volt.GainValue = TotalGain;
 
-    // volt.x[3] = Rosso_Position_x;
-    // volt.y[3] = Rosso_Position_y;
-    // volt.z[3] = Rosso_Position_z;
+    // volt.x[3] = Coil_4_Position_x;
+    // volt.y[3] = Coil_4_Position_y;
+    // volt.z[3] = Coil_4_Position_z;
     // volt.stdDev[3] = MagneticStandardDeviation;
-    // volt.measuredVolt[3] = RossoAmpl;
-    // volt.anchorId[3] = Rosso_Id;
-    // volt.resonanceFrequency[3] = RossoResFreq;
+    // volt.measuredVolt[3] = Coil_4Ampl;
+    // volt.anchorId[3] = Coil_4_Id;
+    // volt.resonanceFrequency[3] = Coil_4ResFreq;
     // volt.GainValue = TotalGain;
 
     // check if the ADC is saturating
@@ -1211,25 +1217,25 @@ FFT_Amplitudes performFFT(uint32_t *Input_buffer_pointer, float32_t *Output_buff
     // volt.Id_in_saturation[2] = 0;
     // volt.Id_in_saturation[3] = 0;
 
-    // if (NeroAmpl >= SATURATION_TRESHOLD)
+    // if (Coil_1Ampl >= SATURATION_TRESHOLD)
     // {
     //     volt.Id_in_saturation[0] = 1;
     //     // DEBUG_PRINT("Saturating\n");
     //     volt.there_is_saturation = true;
     // }
-    // if (GialloAmpl >= SATURATION_TRESHOLD)
+    // if (Coil_2Ampl >= SATURATION_TRESHOLD)
     // {
     //     volt.Id_in_saturation[1] = 1;
     //     // DEBUG_PRINT("Saturating\n");
     //     volt.there_is_saturation = true;
     // }
-    // if (GrigioAmpl >= SATURATION_TRESHOLD)
+    // if (Coil_3Ampl >= SATURATION_TRESHOLD)
     // {
     //     volt.Id_in_saturation[2] = 1;
     //     // DEBUG_PRINT("Saturating\n");
     //     volt.there_is_saturation = true;
     // }
-    // if (RossoAmpl >= SATURATION_TRESHOLD)
+    // if (Coil_4Ampl >= SATURATION_TRESHOLD)
     // {
     //     volt.Id_in_saturation[3] = 1;
     //     // DEBUG_PRINT("Saturating\n");
@@ -1251,40 +1257,40 @@ FFT_Amplitudes performFFT(uint32_t *Input_buffer_pointer, float32_t *Output_buff
     //     counterSaturation++;
 
     //     // finde the ancor more close to the max by looking at the max fft value
-    //     // Find the maximum value among NeroAmpl, GialloAmpl, GrigioAmpl, RossoAmpl
+    //     // Find the maximum value among Coil_1Ampl, Coil_2Ampl, Coil_3Ampl, Coil_4Ampl
 
-    //     float maxAmpl = NeroAmpl;
-    //     int maxAnchorId = Nero_Id;
-    //     if (GialloAmpl > maxAmpl)
+    //     float maxAmpl = Coil_1Ampl;
+    //     int maxAnchorId = Coil_1_Id;
+    //     if (Coil_2Ampl > maxAmpl)
     //     {
-    //         maxAmpl = GialloAmpl;
-    //         maxAnchorId = Giallo_Id;
+    //         maxAmpl = Coil_2Ampl;
+    //         maxAnchorId = Coil_2_Id;
     //     }
-    //     if (GrigioAmpl > maxAmpl)
+    //     if (Coil_3Ampl > maxAmpl)
     //     {
-    //         maxAmpl = GrigioAmpl;
-    //         maxAnchorId = Grigio_Id;
+    //         maxAmpl = Coil_3Ampl;
+    //         maxAnchorId = Coil_3_Id;
     //     }
-    //     if (RossoAmpl > maxAmpl)
+    //     if (Coil_4Ampl > maxAmpl)
     //     {
-    //         maxAmpl = RossoAmpl;
-    //         maxAnchorId = Rosso_Id;
+    //         maxAmpl = Coil_4Ampl;
+    //         maxAnchorId = Coil_4_Id;
     //     }
 
     //     char *anchorName;
     //     switch (maxAnchorId)
     //     {
-    //     case Nero_Id:
-    //         anchorName = "Nero";
+    //     case Coil_1_Id:
+    //         anchorName = "Coil_1";
     //         break;
-    //     case Giallo_Id:
-    //         anchorName = "Giallo";
+    //     case Coil_2_Id:
+    //         anchorName = "Coil_2";
     //         break;
-    //     case Grigio_Id:
-    //         anchorName = "Grigio";
+    //     case Coil_3_Id:
+    //         anchorName = "Coil_3";
     //         break;
-    //     case Rosso_Id:
-    //         anchorName = "Rosso";
+    //     case Coil_4_Id:
+    //         anchorName = "Coil_4";
     //         break;
     //     default:
     //         anchorName = "Unknown";
@@ -1462,10 +1468,10 @@ static void mytask(void *param)
 
                 if (currentCalibrationTick < CALIBRATION_TIC_VALUE)
                 {
-                    calibrationMean[0] += amplitudes.NeroAmpl;
-                    calibrationMean[1] += amplitudes.GialloAmpl;
-                    calibrationMean[2] += amplitudes.GrigioAmpl;
-                    calibrationMean[3] += amplitudes.RossoAmpl;
+                    calibrationMean[0] += amplitudes.Coil_1Ampl;
+                    calibrationMean[1] += amplitudes.Coil_2Ampl;
+                    calibrationMean[2] += amplitudes.Coil_3Ampl;
+                    calibrationMean[3] += amplitudes.Coil_4Ampl;
 
                     currentCalibrationTick = currentCalibrationTick + 1;
                 }
@@ -1498,20 +1504,20 @@ static void mytask(void *param)
                         // float tag_or_versor_calibrated[3] = {RotationMatrix[0][2], RotationMatrix[1][2], RotationMatrix[2][2]};
                         float tag_or_versor_calibrated[3] = {0.0f, 0.0f, 1.0f};
 
-                        float anchor_1_pose[3] = {Nero_Position_x, Nero_Position_y, Nero_Position_z};
-                        float anchor_2_pose[3] = {Giallo_Position_x, Giallo_Position_y, Giallo_Position_z};
-                        float anchor_3_pose[3] = {Grigio_Position_x, Grigio_Position_y, Grigio_Position_z};
-                        float anchor_4_pose[3] = {Rosso_Position_x, Rosso_Position_y, Rosso_Position_z};
+                        float anchor_1_pose[3] = {Coil_1_Position_x, Coil_1_Position_y, Coil_1_Position_z};
+                        float anchor_2_pose[3] = {Coil_2_Position_x, Coil_2_Position_y, Coil_2_Position_z};
+                        float anchor_3_pose[3] = {Coil_3_Position_x, Coil_3_Position_y, Coil_3_Position_z};
+                        float anchor_4_pose[3] = {Coil_4_Position_x, Coil_4_Position_y, Coil_4_Position_z};
                         get_B_field_for_a_Anchor(anchor_1_pose, tag_pos_predicted_calibrated, tag_or_versor_calibrated, B_field_vector_1);
                         get_B_field_for_a_Anchor(anchor_2_pose, tag_pos_predicted_calibrated, tag_or_versor_calibrated, B_field_vector_2);
                         get_B_field_for_a_Anchor(anchor_3_pose, tag_pos_predicted_calibrated, tag_or_versor_calibrated, B_field_vector_3);
                         get_B_field_for_a_Anchor(anchor_4_pose, tag_pos_predicted_calibrated, tag_or_versor_calibrated, B_field_vector_4);
 
                         // computing the V_rx for each of the 4 anchors
-                        float V_rx_1 = V_from_B(B_field_vector_1, tag_or_versor_calibrated, NeroResFreq, TotalGain);
-                        float V_rx_2 = V_from_B(B_field_vector_2, tag_or_versor_calibrated, GialloResFreq, TotalGain);
-                        float V_rx_3 = V_from_B(B_field_vector_3, tag_or_versor_calibrated, GrigioResFreq, TotalGain);
-                        float V_rx_4 = V_from_B(B_field_vector_4, tag_or_versor_calibrated, RossoResFreq, TotalGain);
+                        float V_rx_1 = V_from_B(B_field_vector_1, tag_or_versor_calibrated, Coil_1ResFreq, TotalGain);
+                        float V_rx_2 = V_from_B(B_field_vector_2, tag_or_versor_calibrated, Coil_2ResFreq, TotalGain);
+                        float V_rx_3 = V_from_B(B_field_vector_3, tag_or_versor_calibrated, Coil_3ResFreq, TotalGain);
+                        float V_rx_4 = V_from_B(B_field_vector_4, tag_or_versor_calibrated, Coil_4ResFreq, TotalGain);
 
                         calibrationsGains[0] = meanData_a1 / V_rx_1;
                         calibrationsGains[1] = meanData_a2 / V_rx_2;
@@ -1656,56 +1662,21 @@ static void mytask(void *param)
                                 // is not an outlier
 
                                 //  now check if the drone is taking off or is landing in both cases the z is not reliable
-                                if (x_start[2] < TARGET_FLYING_HEIGHT - 0.02)
+                                // point_t cfPosP;
+                                // estimatorKalmanGetEstimatedPos(&cfPosP);
+                                if (x_start[2] < TARGET_FLYING_HEIGHT - 0.08f)
                                 {
-                                    Optimization_Model_STD_Z = 0.3f;
+                                    Optimization_Model_STD_Z = 0.08f;
                                 }
                                 else
                                 {
                                     Optimization_Model_STD_Z = 0.08f;
+
                                 }
 
-                                // Optimization_Model_STD_Z = 0.12f;
-
-                                // // compensate z coil offset
-                                // solution[2] = solution[2] - offsetCoil;
-                                // // ACCUMULATE Z MEASUREMENTS UNTIL RICH THE MAX NUMBER OF MEASUREMENTS (I.E. 10)
-                                // if (numberOfZMeasurements < Z_MEASUREMENTS_TO_ACCUMULATE)
-                                // {
-                                //     // accumulate the measurements
-                                //     ZMeasurements[numberOfZMeasurements] = solution[2];
-                                //     numberOfZMeasurements++;
-
-                                //     // compute the mean using numberofZMeasurements
-                                //     float zsum = 0.0f;
-                                //     for (int i = 0; i < numberOfZMeasurements; i++)
-                                //     {
-                                //         zsum += ZMeasurements[i];
-                                //     }
-                                //     z_final_measurement = zsum / (float)numberOfZMeasurements;
-                                //     // DEBUG_PRINT("Z Final Measurement: %f, numberOfZMeasurements: %f\n", (double)z_final_measurement, (double)numberOfZMeasurements);
-                                // }
-                                // if (numberOfZMeasurements == Z_MEASUREMENTS_TO_ACCUMULATE)
-                                // {
-                                //     // remove the oldest element, insert the new one
-                                //     for (int i = 0; i < Z_MEASUREMENTS_TO_ACCUMULATE - 1; i++)
-                                //     {
-                                //         ZMeasurements[i] = ZMeasurements[i + 1];
-                                //     }
-                                //     ZMeasurements[Z_MEASUREMENTS_TO_ACCUMULATE - 1] = solution[2];
-
-                                //     // compute the mean using numberofZMeasurements
-                                //     float zsum = 0.0f;
-                                //     for (int i = 0; i < Z_MEASUREMENTS_TO_ACCUMULATE; i++)
-                                //     {
-                                //         zsum += ZMeasurements[i];
-                                //     }
-                                //     z_final_measurement = zsum / (float)Z_MEASUREMENTS_TO_ACCUMULATE;
-                                //     // DEBUG_PRINT("Z Final Measurement: %f\n", (double)z_final_measurement);
-                                // }
                             }
 
-                            if (!(euclidean_distance_xy >= 0.20f))
+                            if (!(euclidean_distance_xy >= 0.50f))
                             {
 
                                 // z_final_measurement = z_final_measurement - 0.1f; // maunual calibration z-azis
@@ -1715,9 +1686,13 @@ static void mytask(void *param)
                                 ext_pos.x = solution[0];
                                 ext_pos.y = solution[1];
                                 // ext_pos.z = z_final_measurement;
-                                ext_pos.z = solution[2] - offsetCoil; // NOTA: è COMPENSATO PRIMA ORA
+                                ext_pos.z = solution[2];// - offsetCoil; // NOTA: è COMPENSATO PRIMA ORA
                                 ext_pos.stdDev = Optimization_Model_STD;
                                 estimatorEnqueuePosition(&ext_pos);
+                                outlier = 0;
+                            }
+                            else{
+                                outlier = 1;
                             }
                         }
                         else if (MODEL_TO_USE == 1)
@@ -1881,19 +1856,21 @@ LOG_GROUP_START(Optimization_Model)
 LOG_ADD(LOG_FLOAT, T_x, &solution[0])
 LOG_ADD(LOG_FLOAT, T_y, &solution[1])
 LOG_ADD(LOG_FLOAT, T_z, &solution[2])
-LOG_ADD(LOG_FLOAT, Z_AVG, &z_final_measurement)
+// LOG_ADD(LOG_FLOAT, Z_AVG, &z_final_measurement)
 
 // LOG_ADD(LOG_FLOAT, Out_d, &euclidean_distance_xy)
 // LOG_ADD(LOG_FLOAT, Out_z, &euclidean_distance_z)
 
-// LOG_ADD(LOG_UINT8, Nero_sat, &idSaturations[0])
+// LOG_ADD(LOG_UINT8, Coil_1_sat, &idSaturations[0])
 // LOG_ADD(LOG_UINT8, Gial_sat, &idSaturations[1])
 // LOG_ADD(LOG_UINT8, Grig_sat, &idSaturations[2])
 // LOG_ADD(LOG_UINT8, Ros_sat, &idSaturations[3])
 
-LOG_ADD(LOG_FLOAT, KF_x, &LKF_ESTIMATION_DEBUG[0])
-LOG_ADD(LOG_FLOAT, KF_y, &LKF_ESTIMATION_DEBUG[1])
-LOG_ADD(LOG_FLOAT, KF_z, &LKF_ESTIMATION_DEBUG[2])
+// LOG_ADD(LOG_FLOAT, KF_x, &LKF_ESTIMATION_DEBUG[0])
+// LOG_ADD(LOG_FLOAT, KF_y, &LKF_ESTIMATION_DEBUG[1])
+// LOG_ADD(LOG_FLOAT, KF_z, &LKF_ESTIMATION_DEBUG[2])
+
+// LOG_ADD(LOG_FLOAT, out, &outlier)
 
 LOG_GROUP_STOP(Optimization_Model)
 

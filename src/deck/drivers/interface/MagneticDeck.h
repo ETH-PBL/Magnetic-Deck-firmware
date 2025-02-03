@@ -23,7 +23,7 @@
 #define ADC_PRESCALER 6.0f
 // 12 from bit and 15 from the register value 12+15 = 27
 #define ADC_Full_Sampling_Time 27.0f
-#define Fc_ADC (PCLK2 / ADC_PRESCALER / ADC_Full_Sampling_Time)
+#define Fc_ADC (PCLK2 / ADC_PRESCALER / ADC_Full_Sampling_Time) // 518 KHz
 
 #define ADC_Channel_Default ADC_Channel_3;
 // -------------------------- DMA -------------------------------------------
@@ -35,13 +35,13 @@
 
 // -------------------------- FFT -------------------------------------------
 #define FFT_SIZE ARRAY_SIZE
-#define BIN_SIZE (int)(Fc_ADC / FFT_SIZE)
+#define BIN_SIZE (int)(Fc_ADC / FFT_SIZE) // 253 Hz
 #define SATURATION_TRESHOLD 1.2f
 
 // ------------------------ Measurement Model Params -------------------------------------------
 #define Default_MagneticStandardDeviation 0.0001f
 #define G_INA 30.0f
-#define Optimization_Model_STD 0.08f
+#define Optimization_Model_STD 0.06f
 static float Optimization_Model_STD_Z = 0.15f;
 
 #define offsetCoil 0.025f // 3 cmf
@@ -84,46 +84,98 @@ typedef struct
 // ------------------------ Anchors Parameters -------------------------------------------
 #define NUM_ANCHORS 4
 
+// // NERO COIL
+// // Resonance Freqs Anchors in Hz
+// // #define Coil_1ResFreq 213e3
+// #define Coil_1ResFreq 210e3
+// #define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
+// #define Coil_1_M -2.804
+// #define Coil_1_Q -2.635
+// #define Coil_1_Position_x 0.255f
+// #define Coil_1_Position_y 0.27f
+// #define Coil_1_Position_z +0.25f 
+// #define Coil_1_Id 0
+
+// // GIALLO COIL
+// // #define Coil_2ResFreq 203e3
+// #define Coil_2ResFreq 199e3
+// #define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE)
+// #define Coil_2_M -2.887
+// #define Coil_2_Q -2.629
+// #define Coil_2_Position_x +0.255f
+// #define Coil_2_Position_y -0.27f
+// #define Coil_2_Position_z +0.25f 
+// #define Coil_2_Id 1
+
+// // GRIGIO COIL
+// // #define Coil_3ResFreq 193e3
+// #define Coil_3ResFreq 189e3 // 189 default mcu
+// #define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE) // index num 747 
+// #define Coil_3_M -2.902
+// #define Coil_3_Q -2.647
+// #define Coil_3_Position_x -0.255f
+// #define Coil_3_Position_y -0.27f
+// #define Coil_3_Position_z +0.25f 
+// #define Coil_3_Id 2
+
+// // ROSSO COIL
+// // #define Coil_4ResFreq 183e3
+// #define Coil_4ResFreq 181e3
+// #define Coil_4Idx (int)(Coil_4ResFreq / BIN_SIZE)
+// #define Coil_4_M -2.950
+// #define Coil_4_Q -2.640
+// #define Coil_4_Position_x -0.255f
+// #define Coil_4_Position_y +0.27f
+// #define Coil_4_Position_z +0.25f 
+// #define Coil_4_Id 3
+
+
+// NERO COIL
 // Resonance Freqs Anchors in Hz
-// #define NeroResFreq 213e3
-#define NeroResFreq 210e3
-#define NeroIdx (int)(NeroResFreq / BIN_SIZE)
-#define Nero_M -2.804
-#define Nero_Q -2.635
-#define Nero_Position_x 0.255f
-#define Nero_Position_y 0.27f
-#define Nero_Position_z +0.25f - 0.02f
-#define Nero_Id 0
+// #define Coil_1ResFreq 213e3
+#define Coil_3ResFreq 210e3
+#define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE)
+#define Coil_3_M -2.804
+#define Coil_3_Q -2.635
+#define Coil_3_Position_x +0.255f
+#define Coil_3_Position_y +0.27f
+#define Coil_3_Position_z +0.25f 
+#define Coil_3_Id 0
 
-// #define GialloResFreq 203e3
-#define GialloResFreq 199e3
-#define GialloIdx (int)(GialloResFreq / BIN_SIZE)
-#define Giallo_M -2.887
-#define Giallo_Q -2.629
-#define Giallo_Position_x +0.255f
-#define Giallo_Position_y -0.27f
-#define Giallo_Position_z +0.25f - 0.02f
-#define Giallo_Id 1
+// GIALLO COIL
+// #define Coil_2ResFreq 203e3
+#define Coil_4ResFreq 199e3
+#define Coil_4Idx (int)(Coil_4ResFreq / BIN_SIZE)
+#define Coil_4_M -2.887
+#define Coil_4_Q -2.629
+#define Coil_4_Position_x +0.255f
+#define Coil_4_Position_y -0.27f
+#define Coil_4_Position_z +0.25f 
+#define Coil_4_Id 1
 
-// #define GrigioResFreq 193e3
-#define GrigioResFreq 189e3
-#define GrigioIdx (int)(GrigioResFreq / BIN_SIZE)
-#define Grigio_M -2.902
-#define Grigio_Q -2.647
-#define Grigio_Position_x -0.255f
-#define Grigio_Position_y -0.27f
-#define Grigio_Position_z +0.25f - 0.02f
-#define Grigio_Id 2
+// GRIGIO COIL
+// #define Coil_3ResFreq 193e3
+#define Coil_2ResFreq 189e3 // 189 default mcu
+#define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE) // index num 747 
+#define Coil_2_M -2.902
+#define Coil_2_Q -2.647
+#define Coil_2_Position_x -0.255f
+#define Coil_2_Position_y -0.27f
+#define Coil_2_Position_z +0.25f 
+#define Coil_2_Id 2
 
-// #define RossoResFreq 183e3
-#define RossoResFreq 181e3
-#define RossoIdx (int)(RossoResFreq / BIN_SIZE)
-#define Rosso_M -2.950
-#define Rosso_Q -2.640
-#define Rosso_Position_x -0.255f
-#define Rosso_Position_y +0.27f
-#define Rosso_Position_z +0.25f - 0.02f
-#define Rosso_Id 3
+// ROSSO COIL
+// #define Coil_4ResFreq 183e3
+#define Coil_1ResFreq 181e3
+#define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
+#define Coil_1_M -2.950
+#define Coil_1_Q -2.640
+#define Coil_1_Position_x -0.255f
+#define Coil_1_Position_y +0.27f
+#define Coil_1_Position_z +0.25f 
+#define Coil_1_Id 3
+
+
 
 // ------------------------ PHYSICAL COIL -------------------------------------------
 #define RAY 0.019f
@@ -180,10 +232,10 @@ void DMA2_Stream4_IRQHandler(void);
 void ADC1_IRQHandler(void);
 typedef struct
 {
-    float NeroAmpl;
-    float GialloAmpl;
-    float GrigioAmpl;
-    float RossoAmpl;
+    float Coil_1Ampl;
+    float Coil_2Ampl;
+    float Coil_3Ampl;
+    float Coil_4Ampl;
     float AllAmpl[NUM_ANCHORS];
 } FFT_Amplitudes;
 

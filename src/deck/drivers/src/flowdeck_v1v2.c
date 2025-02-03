@@ -34,12 +34,13 @@
 
 #include "stabilizer_types.h"
 #include "estimator.h"
-#include "estimator.h"
+
 
 #include "cf_math.h"
 
 #include "usec_time.h"
 #include <stdlib.h>
+#include "MagneticDeck.h"
 
 #define AVERAGE_HISTORY_LENGTH 4
 #define OULIER_LIMIT 100
@@ -78,14 +79,57 @@ static float flowStdFixed = 2.0f;
 
 #define NCS_PIN DECK_GPIO_IO3
 
+static float coilXLimit = 0.20f;
+static float coilYLimit = 0.20f;
+
 
 static void flowdeckTask(void *param)
 {
   systemWaitStart();
 
+
+
+
+  // Calcolo limiti area coil (x, y) cercando i valori assoluti massimi fra le ancore
+  float anchorX[NUM_ANCHORS] = {Coil_1_Position_x, Coil_2_Position_x,Coil_3_Position_x,Coil_4_Position_x};
+  float anchorY[NUM_ANCHORS] = {Coil_1_Position_y, Coil_2_Position_y,Coil_3_Position_y,Coil_4_Position_y};
+
+
+  for (int i = 0; i < NUM_ANCHORS; i++) {
+    if (fabsf(anchorX[i]) > coilXLimit) coilXLimit = fabsf(anchorX[i]);
+    if (fabsf(anchorY[i]) > coilYLimit) coilYLimit = fabsf(anchorY[i]);
+  }
+  // Debug print
+  DEBUG_PRINT("Coil X limit: %f\n", coilXLimit);
+  DEBUG_PRINT("Coil Y limit: %f\n", coilYLimit);
+
+
   uint64_t lastTime  = usecTimestamp();
   while(1) {
     vTaskDelay(10);
+
+    point_t cfPosP;
+    estimatorKalmanGetEstimatedPos(&cfPosP);
+
+    // Debug print
+    // DEBUG_PRINT("Posizione: %f %f\n", cfPosP.x, cfPosP.y);
+
+    // Se fuori dall'area sottesa dalle coil, disabilito Flow deck
+    if ((fabsf(cfPosP.x) > coilXLimit) || (fabsf(cfPosP.y) > coilYLimit)) {
+      useFlowDisabled = true;
+      // static uint64_t lastPrintTime_out = 0;
+      // if (usecTimestamp() - lastPrintTime_out > 1000000) {
+      //   DEBUG_PRINT("Sto FUORI dall'area delle coil\n");
+      //   lastPrintTime_out = usecTimestamp();
+      // }
+    } else {
+      useFlowDisabled = false;
+      // static uint64_t lastPrintTime = 0;
+      // if (usecTimestamp() - lastPrintTime > 1000000) {
+      //   DEBUG_PRINT("Sto dentro dall'area delle coil\n");
+      //   lastPrintTime = usecTimestamp();
+      // }
+    }
 
     pmw3901ReadMotion(NCS_PIN, &currentMotion);
 
@@ -332,5 +376,10 @@ PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcFlow, &isInit1)
  * @brief Nonzero if [Flow deck v2](%https://store.bitcraze.io/collections/decks/products/flow-deck-v2) is attached
  */
 PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcFlow2, &isInit2)
+
+// param for the coil limits
+PARAM_ADD_CORE(PARAM_FLOAT, coilXLimit, &coilXLimit)
+PARAM_ADD_CORE(PARAM_FLOAT, coilYLimit, &coilYLimit)
+
 
 PARAM_GROUP_STOP(deck)

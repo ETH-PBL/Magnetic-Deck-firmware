@@ -37,6 +37,7 @@
 #include "param.h"
 #include "range.h"
 #include "static_mem.h"
+#include "estimator.h"
 
 #include "i2cdev.h"
 #include "zranger2.h"
@@ -58,10 +59,26 @@ static uint16_t range_last = 0;
 
 static bool isInit;
 
-static float distanceAfterDetection = 0.0f;
-static bool DroneIsOneTheFloor = false;
+
 
 NO_DMA_CCM_SAFE_ZERO_INIT static VL53L1_Dev_t dev;
+
+
+// -------------- Parametri configurabili --------------
+// 1) Altezza del robot (offset da sottrarre quando il drone è fuori)
+static float robodogOffset_adjustable = robodogOffset; // h_robot
+static float target_fly_height =TARGET_FLYING_HEIGHT; // h_target
+static float derivative_threshold_z = 0.05f; // derivata troppo alta
+
+// -------------- Parametri e definizioni --------------
+
+// Variabili globali per la compensazione
+static uint8_t state_zone_cf = 0;        // 0 = salita, 1 = discesa , 2 = stazionamento, 3 = derivata troppo alta
+static float derivative_z = 0.0f;        // derivata della misura
+static bool first_measure = true;        // prima misura
+static float originalDistance = 0.0f;  // misura raw (m)
+static float compensatedDist  = 0.0f;  // misura compensata
+static float raw_measure_t0 = 0.0f;    // misura raw al tempo t0
 
 static uint16_t zRanger2GetMeasurementAndRestart(VL53L1_Dev_t *dev)
 {
@@ -134,9 +151,13 @@ void zRanger2Task(void *arg)
 
   int measurmentCounter = 0;
 
+
   while (1)
   {
     vTaskDelayUntil(&lastWakeTime, M2T(25));
+
+    point_t cfPosP;
+    estimatorKalmanGetEstimatedPos(&cfPosP);
 
     range_last = zRanger2GetMeasurementAndRestart(&dev);
     rangeSet(rangeDown, range_last / 1000.0f);
@@ -148,48 +169,67 @@ void zRanger2Task(void *arg)
     {
       float distance = (float)range_last * 0.001f; // Scale from [mm] to [m]
       float stdDev = expStdA * (1.0f + expf(expCoeff * (distance - expPointA)));
-      // rangeEnqueueDownRangeInEstimator(distance, stdDev, xTaskGetTickCount());
 
-      // detection of the zone of the drone
-      if (distance <= 0.25f)
+      // Logga la misura originale
+      originalDistance = distance;
+
+      if (first_measure)
       {
-        distanceAfterDetection = distance;
-        // the drone is landed or over the robodog
-        rangeEnqueueDownRangeInEstimator(distanceAfterDetection, stdDev, xTaskGetTickCount());
-        measurmentCounter = 0;
-
-        DroneIsOneTheFloor = false;
+        raw_measure_t0 = distance;
+        first_measure = false;
       }
-
-      if (distance > TARGET_FLYING_HEIGHT+robodogOffset -0.05f)
-      
+      else
       {
-
-        // count this measurement as a measurement from the floor
-
-        // measurmentCounter++;
-        // distanceAfterDetection = distance;
-        // rangeEnqueueDownRangeInEstimator(distanceAfterDetection, stdDev, xTaskGetTickCount());
-
-        // // if we have 4 measurements from the floor, we can assume that the drone is on the floor
-        // if (measurmentCounter > 5)
-        // {
-        DroneIsOneTheFloor = true;
-
-        //  the drone is out of the convex hull of the robodog, the measurement has to be compensated
-        distanceAfterDetection = distance - robodogOffset;
-
-        
-        rangeEnqueueDownRangeInEstimator(distanceAfterDetection, stdDev, xTaskGetTickCount());
-        
-        // print distance after the detection
-        // DEBUG_PRINT("distance: %f\n", distance);
-        
-        // // print the distance after the detection
-        // DEBUG_PRINT("distanceafterdetection: %f\n", distanceAfterDetection);
-        
-        // }
+        derivative_z = distance - raw_measure_t0;
+        // se la derivata è positiva, il drone sta salendo 
+        // quindi non applico la compensazione  
+        if ( derivative_z > 0 && distance < target_fly_height)
+        {
+          state_zone_cf = 0;
+          compensatedDist = distance;
+          // aggiorno la misura di riferimento
+          raw_measure_t0 = distance;
+        }
+        // se la derivata supera una certa soglia, il drone sta vedendo il gradino
+        // quindi "salto" le misure. Sia in salita che in discesa
+        else if (fabs(derivative_z)>derivative_threshold_z)
+        {
+          state_zone_cf = 3;
+          // non aggiorno la misura di riferimento
+          // la misura compensata rimane uguale
+          compensatedDist = compensatedDist;
+          raw_measure_t0 = distance;
+        }
+        //se vedo una misura maggiore della quota target e la derivata è piccola
+        // allora il drone ha superato il gradino e posso applicare la compensazione
+        else if (distance > target_fly_height && fabs(derivative_z) < derivative_threshold_z)
+        {
+          state_zone_cf = 2;
+          compensatedDist = compensatedDist + derivative_z;
+          // aggiorno la misura di riferimento
+          raw_measure_t0 = distance;
+        }
+        //se la misura è minore della quota target e la derivata è piccola
+        // allora il drone è in discesa e non applico la compensazione
+        else if (distance < target_fly_height && fabs(derivative_z) < derivative_threshold_z && derivative_z <0)
+        {
+          state_zone_cf = 1;
+          compensatedDist = distance;
+          // aggiorno la misura di riferimento
+          raw_measure_t0 = distance;
+      }else{
+        // non dovrebbe mai arrivare qui
+        state_zone_cf = 4;
+        compensatedDist = distance;
+        // aggiorno la misura di riferimento
+        raw_measure_t0 = distance;
+        DEBUG_PRINT("ERRORE MISURA ZRANGER\n");
       }
+            
+      // Invia la misura compensata all'estimatore
+      rangeEnqueueDownRangeInEstimator(compensatedDist, stdDev, xTaskGetTickCount());
+      }
+        // else: skip se outlier
     }
   }
 }
@@ -209,8 +249,19 @@ DECK_DRIVER(zranger2_deck);
 
 LOG_GROUP_START(MyZRang)
 
-LOG_ADD(LOG_FLOAT, MyZRang, &distanceAfterDetection)
-LOG_ADD(LOG_UINT8, Cf21OnF, &DroneIsOneTheFloor)
+// Misura originale
+LOG_ADD(LOG_FLOAT, original,    &originalDistance)
+
+// Misura compensata
+LOG_ADD(LOG_FLOAT, compensated, &compensatedDist)
+
+// Derivata
+LOG_ADD(LOG_FLOAT, derivative,  &derivative_z)
+
+// Stato della compensazione
+LOG_ADD(LOG_UINT8, state,       &state_zone_cf)
+
+
 
 LOG_GROUP_STOP(MyZRang)
 
@@ -220,5 +271,21 @@ PARAM_GROUP_START(deck)
  * @brief Nonzero if [Z-ranger deck v2](%https://store.bitcraze.io/collections/decks/products/z-ranger-deck-v2) is attached
  */
 PARAM_ADD_CORE(PARAM_UINT8 | PARAM_RONLY, bcZRanger2, &isInit)
+
+/**
+ * @brief Offset to subtract when the drone is on the ground
+ */
+PARAM_ADD_CORE(PARAM_FLOAT, HRobodog, &robodogOffset_adjustable)
+
+
+/**
+ * @brief Target height for the drone to fly at
+ */
+PARAM_ADD_CORE(PARAM_FLOAT, HTarget, &target_fly_height)
+/**
+ * @brief Threshold for the derivative term of the measurement
+ */
+PARAM_ADD_CORE(PARAM_FLOAT, DerivativeThresholdZ, &derivative_threshold_z)
+
 
 PARAM_GROUP_STOP(deck)
