@@ -183,7 +183,7 @@ void zRanger2Task(void *arg)
         derivative_z = distance - raw_measure_t0;
         // se la derivata è positiva, il drone sta salendo 
         // quindi non applico la compensazione  
-        if ( derivative_z > 0 && distance < target_fly_height)
+        if ( derivative_z >= 0 && distance < target_fly_height)
         {
           state_zone_cf = 0;
           compensatedDist = distance;
@@ -224,6 +224,7 @@ void zRanger2Task(void *arg)
         // aggiorno la misura di riferimento
         raw_measure_t0 = distance;
         DEBUG_PRINT("ERRORE MISURA ZRANGER\n");
+        DEBUG_PRINT("MISURA: %f\n", distance);
       }
             
       // Invia la misura compensata all'estimatore

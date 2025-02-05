@@ -137,8 +137,8 @@ typedef struct
 #define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE)
 #define Coil_3_M -2.804
 #define Coil_3_Q -2.635
-#define Coil_3_Position_x +0.255f
-#define Coil_3_Position_y +0.27f
+#define Coil_3_Position_x +0.245f
+#define Coil_3_Position_y +0.3325f
 #define Coil_3_Position_z +0.25f 
 #define Coil_3_Id 0
 
@@ -149,7 +149,7 @@ typedef struct
 #define Coil_4_M -2.887
 #define Coil_4_Q -2.629
 #define Coil_4_Position_x +0.255f
-#define Coil_4_Position_y -0.27f
+#define Coil_4_Position_y -0.3325f
 #define Coil_4_Position_z +0.25f 
 #define Coil_4_Id 1
 
@@ -160,7 +160,7 @@ typedef struct
 #define Coil_2_M -2.902
 #define Coil_2_Q -2.647
 #define Coil_2_Position_x -0.255f
-#define Coil_2_Position_y -0.27f
+#define Coil_2_Position_y -0.3325f
 #define Coil_2_Position_z +0.25f 
 #define Coil_2_Id 2
 
@@ -170,8 +170,8 @@ typedef struct
 #define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
 #define Coil_1_M -2.950
 #define Coil_1_Q -2.640
-#define Coil_1_Position_x -0.255f
-#define Coil_1_Position_y +0.27f
+#define Coil_1_Position_x -0.245f
+#define Coil_1_Position_y +0.3325f
 #define Coil_1_Position_z +0.25f 
 #define Coil_1_Id 3
 
