@@ -40,7 +40,7 @@
 
 // ------------------------ Measurement Model Params -------------------------------------------
 #define Default_MagneticStandardDeviation 0.0001f
-#define G_INA 30.0f
+#define G_INA 100.0f
 #define Optimization_Model_STD 0.06f
 static float Optimization_Model_STD_Z = 0.15f;
 
@@ -61,7 +61,6 @@ typedef struct
     float P[STATE_DIM][STATE_DIM];
     float x_state[STATE_DIM];
     float z_meas[MEASURE_DIM];
-
 } KalmanFilter;
 
 #define q_kf_default 0.025f
@@ -87,48 +86,47 @@ typedef struct
 // // NERO COIL
 // // Resonance Freqs Anchors in Hz
 // // #define Coil_1ResFreq 213e3
-// #define Coil_1ResFreq 210e3
-// #define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
-// #define Coil_1_M -2.804
-// #define Coil_1_Q -2.635
-// #define Coil_1_Position_x 0.255f
-// #define Coil_1_Position_y 0.27f
-// #define Coil_1_Position_z +0.25f 
-// #define Coil_1_Id 0
+// #define Coil_3ResFreq 210e3
+// #define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE)
+// #define Coil_3_M -2.804
+// #define Coil_3_Q -2.635
+// #define Coil_3_Position_x +0.245f
+// #define Coil_3_Position_y +0.3325f
+// #define Coil_3_Position_z +0.25f
+// #define Coil_3_Id 0
 
 // // GIALLO COIL
 // // #define Coil_2ResFreq 203e3
-// #define Coil_2ResFreq 199e3
-// #define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE)
-// #define Coil_2_M -2.887
-// #define Coil_2_Q -2.629
-// #define Coil_2_Position_x +0.255f
-// #define Coil_2_Position_y -0.27f
-// #define Coil_2_Position_z +0.25f 
-// #define Coil_2_Id 1
+// #define Coil_4ResFreq 199e3
+// #define Coil_4Idx (int)(Coil_4ResFreq / BIN_SIZE)
+// #define Coil_4_M -2.887
+// #define Coil_4_Q -2.629
+// #define Coil_4_Position_x +0.255f
+// #define Coil_4_Position_y -0.3325f
+// #define Coil_4_Position_z +0.25f
+// #define Coil_4_Id 1
 
 // // GRIGIO COIL
 // // #define Coil_3ResFreq 193e3
-// #define Coil_3ResFreq 189e3 // 189 default mcu
-// #define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE) // index num 747 
-// #define Coil_3_M -2.902
-// #define Coil_3_Q -2.647
-// #define Coil_3_Position_x -0.255f
-// #define Coil_3_Position_y -0.27f
-// #define Coil_3_Position_z +0.25f 
-// #define Coil_3_Id 2
+// #define Coil_2ResFreq 189e3 // 189 default mcu
+// #define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE) // index num 747
+// #define Coil_2_M -2.902
+// #define Coil_2_Q -2.647
+// #define Coil_2_Position_x -0.255f
+// #define Coil_2_Position_y -0.3325f
+// #define Coil_2_Position_z +0.25f
+// #define Coil_2_Id 2
 
 // // ROSSO COIL
 // // #define Coil_4ResFreq 183e3
-// #define Coil_4ResFreq 181e3
-// #define Coil_4Idx (int)(Coil_4ResFreq / BIN_SIZE)
-// #define Coil_4_M -2.950
-// #define Coil_4_Q -2.640
-// #define Coil_4_Position_x -0.255f
-// #define Coil_4_Position_y +0.27f
-// #define Coil_4_Position_z +0.25f 
-// #define Coil_4_Id 3
-
+// #define Coil_1ResFreq 181e3
+// #define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
+// #define Coil_1_M -2.950
+// #define Coil_1_Q -2.640
+// #define Coil_1_Position_x -0.245f
+// #define Coil_1_Position_y +0.3325f
+// #define Coil_1_Position_z +0.25f
+// #define Coil_1_Id 3
 
 // NERO COIL
 // Resonance Freqs Anchors in Hz
@@ -137,9 +135,9 @@ typedef struct
 #define Coil_3Idx (int)(Coil_3ResFreq / BIN_SIZE)
 #define Coil_3_M -2.804
 #define Coil_3_Q -2.635
-#define Coil_3_Position_x +0.245f
-#define Coil_3_Position_y +0.3325f
-#define Coil_3_Position_z +0.25f 
+#define Coil_3_Position_x +0.295f
+#define Coil_3_Position_y +0.25f
+#define Coil_3_Position_z +0.25f
 #define Coil_3_Id 0
 
 // GIALLO COIL
@@ -148,20 +146,20 @@ typedef struct
 #define Coil_4Idx (int)(Coil_4ResFreq / BIN_SIZE)
 #define Coil_4_M -2.887
 #define Coil_4_Q -2.629
-#define Coil_4_Position_x +0.255f
-#define Coil_4_Position_y -0.3325f
-#define Coil_4_Position_z +0.25f 
+#define Coil_4_Position_x +0.295f
+#define Coil_4_Position_y -0.25f
+#define Coil_4_Position_z +0.25f
 #define Coil_4_Id 1
 
 // GRIGIO COIL
 // #define Coil_3ResFreq 193e3
-#define Coil_2ResFreq 189e3 // 189 default mcu
-#define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE) // index num 747 
+#define Coil_2ResFreq 189e3                       // 189 default mcu
+#define Coil_2Idx (int)(Coil_2ResFreq / BIN_SIZE) // index num 747
 #define Coil_2_M -2.902
 #define Coil_2_Q -2.647
-#define Coil_2_Position_x -0.255f
-#define Coil_2_Position_y -0.3325f
-#define Coil_2_Position_z +0.25f 
+#define Coil_2_Position_x -0.295f
+#define Coil_2_Position_y -0.25f
+#define Coil_2_Position_z +0.25f
 #define Coil_2_Id 2
 
 // ROSSO COIL
@@ -170,12 +168,10 @@ typedef struct
 #define Coil_1Idx (int)(Coil_1ResFreq / BIN_SIZE)
 #define Coil_1_M -2.950
 #define Coil_1_Q -2.640
-#define Coil_1_Position_x -0.245f
-#define Coil_1_Position_y +0.3325f
-#define Coil_1_Position_z +0.25f 
+#define Coil_1_Position_x -0.295f
+#define Coil_1_Position_y +0.25f
+#define Coil_1_Position_z +0.25f
 #define Coil_1_Id 3
-
-
 
 // ------------------------ PHYSICAL COIL -------------------------------------------
 #define RAY 0.019f
@@ -253,24 +249,6 @@ void get_B_field_for_a_Anchor(float *anchor_pos,
                               float *B_field);
 
 float V_from_B(float *B_field, float *rx_versor, float resonanceFreq, float Gain);
-
-void V_rx_derivate_x_function(float T_x, float T_y, float T_z, float W_x, float W_y, float W_z,
-                              float N, float current, float S, float Gain,
-                              float A0_x, float A0_y, float A0_z, float A1_x, float A1_y, float A1_z,
-                              float A2_x, float A2_y, float A2_z, float A3_x, float A3_y, float A3_z,
-                              float F_0, float F_1, float F_2, float F_3, float V_rx_derivative_x[4]);
-
-void V_rx_derivate_y_function(float T_x, float T_y, float T_z, float W_x, float W_y, float W_z,
-                              float N, float current, float S, float Gain,
-                              float A0_x, float A0_y, float A0_z, float A1_x, float A1_y, float A1_z,
-                              float A2_x, float A2_y, float A2_z, float A3_x, float A3_y, float A3_z,
-                              float F_0, float F_1, float F_2, float F_3, float V_rx_derivate_y[4]);
-
-void V_rx_derivate_z_function(float T_x, float T_y, float T_z, float W_x, float W_y, float W_z,
-                              float N, float current, float S, float Gain,
-                              float A0_x, float A0_y, float A0_z, float A1_x, float A1_y, float A1_z,
-                              float A2_x, float A2_y, float A2_z, float A3_x, float A3_y, float A3_z,
-                              float F_0, float F_1, float F_2, float F_3, float V_rx_derivate_z[4]);
 
 // -------------------------- NELDER-MEAD Functions -------------------------------------------
 const float myCostFunction_3A(int n, const float *x, void *arg);
